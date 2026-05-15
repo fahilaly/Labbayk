@@ -192,7 +192,7 @@ export default function OperatorPage() {
 
           {/* Emergency decision card */}
           {state === "emergency" && (
-            <div className="absolute top-4 left-4 w-80 bg-white rounded-2xl shadow-2xl border border-red-100 animate-slide-in-right overflow-hidden">
+            <div className="absolute top-4 left-4 w-80 bg-white rounded-2xl shadow-2xl border border-red-100 animate-slide-in-right overflow-hidden z-[1000]">
               {/* Red header */}
               <div className="bg-alert-red text-white px-5 py-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -261,7 +261,7 @@ export default function OperatorPage() {
 
           {/* Alerted state info */}
           {state === "alerted" && (
-            <div className="absolute top-4 left-4 w-72 bg-white rounded-2xl shadow-xl border border-orange-200 animate-slide-in-right">
+            <div className="absolute top-4 left-4 w-72 bg-white rounded-2xl shadow-xl border border-orange-200 animate-slide-in-right z-[1000]">
               <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl">
                 <p className="font-bold">تم إرسال التنبيهات</p>
                 <p className="text-xs text-orange-100">انتظار رد المتطوعين...</p>
@@ -280,7 +280,7 @@ export default function OperatorPage() {
 
           {/* Accepted state */}
           {state === "accepted" && (
-            <div className="absolute top-4 left-4 w-72 bg-white rounded-2xl shadow-xl border border-blue-200 animate-slide-in-right">
+            <div className="absolute top-4 left-4 w-72 bg-white rounded-2xl shadow-xl border border-blue-200 animate-slide-in-right z-[1000]">
               <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl">
                 <p className="font-bold">✅ تم القبول</p>
                 <p className="text-xs text-blue-100">المتطوع في الطريق للمريض</p>
