@@ -9,10 +9,11 @@ interface Props {
   volunteers: Volunteer[];
   emergencyLocation: { lat: number; lng: number };
   highlightedIds: string[];
+  declinedIds: string[];
   radiusMeters: number;
 }
 
-export default function OperatorMap({ showEmergency, volunteers, emergencyLocation, highlightedIds, radiusMeters }: Props) {
+export default function OperatorMap({ showEmergency, volunteers, emergencyLocation, highlightedIds, declinedIds, radiusMeters }: Props) {
   const mapRef        = useRef<LeafletMap | null>(null);
   const containerRef  = useRef<HTMLDivElement>(null);
   const markersRef    = useRef<Record<string, CircleMarker>>({});
@@ -68,10 +69,13 @@ export default function OperatorMap({ showEmergency, volunteers, emergencyLocati
       // Update volunteer marker styles
       Object.entries(markersRef.current).forEach(([id, marker]) => {
         const isHighlighted = highlightedIds.includes(id);
+        const isDeclined    = declinedIds.includes(id);
         marker.setStyle({
-          radius: isHighlighted ? 12 : 7,
-          weight: isHighlighted ? 3 : 2,
-          color: isHighlighted ? "#fbbf24" : "#fff",
+          radius:      isDeclined ? 8 : isHighlighted ? 12 : 7,
+          weight:      isDeclined ? 2 : isHighlighted ? 3 : 2,
+          color:       isDeclined ? "#fff" : isHighlighted ? "#fbbf24" : "#fff",
+          fillColor:   isDeclined ? "#ef4444" : undefined,
+          fillOpacity: isDeclined ? 0.5 : 0.9,
         } as Parameters<typeof marker.setStyle>[0]);
       });
 

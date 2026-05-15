@@ -26,6 +26,7 @@ export type EmergencyEvent =
   | { type: "EMERGENCY_TRIGGERED" }
   | { type: "ALERT_SENT"; volunteer: string }
   | { type: "VOLUNTEER_ACCEPTED"; volunteer: string }
+  | { type: "VOLUNTEER_DECLINED"; volunteer: string }
   | { type: "VOLUNTEER_ARRIVED" }
   | { type: "CASE_RESOLVED"; outcome: "stable" | "transport" | "critical" }
   | { type: "RESET" };

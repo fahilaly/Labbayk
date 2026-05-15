@@ -98,6 +98,7 @@ export default function VolunteerPage() {
     stopAlert();
     audioStarted.current = false;
     if (countdownRef.current) clearInterval(countdownRef.current);
+    broadcast({ type: "VOLUNTEER_DECLINED", volunteer: "د. أحمد الشهري" });
     setScreen("home");
   }
 
