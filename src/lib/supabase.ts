@@ -1,22 +1,24 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
 
-let _supabase: SupabaseClient | null = null;
+let _client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {
-  if (!_supabase) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    _supabase = createClient(url, key);
+  if (!_client) {
+    _client = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
   }
-  return _supabase;
+  return _client;
 }
 
-// Convenience export — safe to use in client components
-export const supabase = {
-  channel: (name: string) => getSupabase().channel(name),
-  removeChannel: (channel: ReturnType<SupabaseClient["channel"]>) =>
-    getSupabase().removeChannel(channel),
-} as const;
+export function createChannel(name: string): RealtimeChannel {
+  return getSupabase().channel(name, { config: { broadcast: { self: false } } });
+}
+
+export function removeChannel(channel: RealtimeChannel) {
+  getSupabase().removeChannel(channel);
+}
 
 export const EMERGENCY_CHANNEL = "labbayk-emergency";
 

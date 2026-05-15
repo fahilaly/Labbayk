@@ -3,7 +3,8 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useRef, useState } from "react";
-import { supabase, EMERGENCY_CHANNEL, EmergencyEvent } from "@/lib/supabase";
+import { createChannel, removeChannel, EMERGENCY_CHANNEL, EmergencyEvent } from "@/lib/supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { startAlert, stopAlert } from "@/lib/alertSound";
 import dynamicImport from "next/dynamic";
 
@@ -21,18 +22,14 @@ export default function VolunteerPage() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioStarted = useRef(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const broadcast = async (event: EmergencyEvent) => {
-    await supabase.channel(EMERGENCY_CHANNEL).send({
-      type: "broadcast",
-      event: "state",
-      payload: event,
-    });
+  const broadcast = (event: EmergencyEvent) => {
+    channelRef.current?.send({ type: "broadcast", event: "state", payload: event });
   };
 
   useEffect(() => {
-    const channel = supabase
-      .channel(EMERGENCY_CHANNEL)
+    const ch = createChannel(EMERGENCY_CHANNEL)
       .on("broadcast", { event: "state" }, ({ payload }) => {
         const ev = payload as EmergencyEvent;
         if (ev.type === "EMERGENCY_TRIGGERED" || ev.type === "ALERT_SENT") {
@@ -50,7 +47,8 @@ export default function VolunteerPage() {
         }
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    channelRef.current = ch;
+    return () => { removeChannel(ch); };
   }, []);
 
   function startCountdown() {

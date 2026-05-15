@@ -3,9 +3,10 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useRef, useState } from "react";
-import { supabase, EMERGENCY_CHANNEL, EmergencyEvent } from "@/lib/supabase";
+import { createChannel, removeChannel, EMERGENCY_CHANNEL, EmergencyEvent } from "@/lib/supabase";
 import { volunteers, TOP_3, EMERGENCY_LOCATION, matchLabel } from "@/lib/volunteers";
 import dynamicImport from "next/dynamic";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 const OperatorMap = dynamicImport(() => import("@/components/OperatorMap"), { ssr: false });
 
@@ -15,23 +16,19 @@ export default function OperatorPage() {
   const [state, setState] = useState<DemoState>("idle");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const autoAcceptRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const broadcast = async (event: EmergencyEvent) => {
-    await supabase.channel(EMERGENCY_CHANNEL).send({
-      type: "broadcast",
-      event: "state",
-      payload: event,
-    });
-  };
-
-  // Listen for volunteer-side responses
+  // Single channel — subscribe once, reuse for sending
   useEffect(() => {
-    const channel = supabase
-      .channel(EMERGENCY_CHANNEL)
+    const ch = createChannel(EMERGENCY_CHANNEL)
       .on("broadcast", { event: "state" }, ({ payload }) => {
         const ev = payload as EmergencyEvent;
-        if (ev.type === "VOLUNTEER_ACCEPTED") setState("accepted");
-        if (ev.type === "VOLUNTEER_ARRIVED") setState((s) => (s === "accepted" ? "resolved" : s));
+        if (ev.type === "VOLUNTEER_ACCEPTED") {
+          setState("accepted");
+          if (autoAcceptRef.current) clearTimeout(autoAcceptRef.current);
+        }
+        if (ev.type === "VOLUNTEER_ARRIVED") setState((s) => s === "accepted" ? "resolved" : s);
         if (ev.type === "CASE_RESOLVED") {
           setState("idle");
           setElapsedSeconds(0);
@@ -39,8 +36,13 @@ export default function OperatorPage() {
         }
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    channelRef.current = ch;
+    return () => { removeChannel(ch); };
   }, []);
+
+  const broadcast = (event: EmergencyEvent) => {
+    channelRef.current?.send({ type: "broadcast", event: "state", payload: event });
+  };
 
   function startTimer() {
     timerRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
@@ -55,9 +57,24 @@ export default function OperatorPage() {
     broadcast({ type: "EMERGENCY_TRIGGERED" });
   }
 
-  async function handleSendAlert() {
+  function handleSendAlert() {
     setState("alerted");
-    await broadcast({ type: "ALERT_SENT", volunteer: TOP_3[0].nameAr });
+    broadcast({ type: "ALERT_SENT", volunteer: TOP_3[0].nameAr });
+
+    // Auto-simulate volunteer acceptance after 4s if volunteer page isn't open
+    autoAcceptRef.current = setTimeout(() => {
+      setState("accepted");
+    }, 4000);
+  }
+
+  function handleSimulateArrival() {
+    setState("resolved");
+    broadcast({ type: "VOLUNTEER_ARRIVED" });
+    setTimeout(() => {
+      setState("idle");
+      setElapsedSeconds(0);
+      stopTimer();
+    }, 3000);
   }
 
   function formatTime(s: number) {
@@ -144,12 +161,12 @@ export default function OperatorPage() {
                 >
                   <div
                     className="w-3 h-3 rounded-full mt-1 flex-shrink-0 volunteer-dot-pulse"
-                    style={{ backgroundColor: v.color, boxShadow: `0 0 0 0 ${v.ring}` }}
+                    style={{ backgroundColor: v.color }}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{v.nameAr}</p>
                     <p className="text-xs text-gray-500">{v.qualificationAr}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{v.distance}م بُعداً</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{v.distance}م</p>
                   </div>
                   {state !== "idle" && TOP_3.find((t) => t.id === v.id) && (
                     <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-medium flex-shrink-0">
@@ -170,13 +187,19 @@ export default function OperatorPage() {
                 محاكاة حالة طارئة
               </button>
             )}
-            {(state === "alerted" || state === "accepted") && (
+            {state === "alerted" && (
               <div className="text-center">
-                <div className="w-8 h-8 border-2 border-saudi-green border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-xs text-gray-500">
-                  {state === "alerted" ? "انتظار رد المتطوع..." : "المتطوع في الطريق"}
-                </p>
+                <div className="w-6 h-6 border-2 border-saudi-green border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-xs text-gray-500">انتظار رد المتطوع...</p>
               </div>
+            )}
+            {state === "accepted" && (
+              <button
+                onClick={handleSimulateArrival}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm transition-all shadow active:scale-95"
+              >
+                محاكاة: وصل المتطوع ✓
+              </button>
             )}
           </div>
         </aside>
@@ -193,7 +216,6 @@ export default function OperatorPage() {
           {/* Emergency decision card */}
           {state === "emergency" && (
             <div className="absolute top-4 left-4 w-80 bg-white rounded-2xl shadow-2xl border border-red-100 animate-slide-in-right overflow-hidden z-[1000]">
-              {/* Red header */}
               <div className="bg-alert-red text-white px-5 py-4">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xl">🚨</span>
@@ -203,7 +225,6 @@ export default function OperatorPage() {
               </div>
 
               <div className="px-5 py-4 space-y-3">
-                {/* Details */}
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="bg-gray-50 rounded-lg p-2">
                     <p className="text-gray-500 mb-0.5">الموقع</p>
@@ -217,7 +238,6 @@ export default function OperatorPage() {
 
                 <p className="text-xs font-bold text-gray-700 border-t pt-3">أقرب ٣ متطوعين مؤهلين:</p>
 
-                {/* Top 3 */}
                 <div className="space-y-2">
                   {TOP_3.map((v, i) => (
                     <div key={v.id} className="bg-gray-50 rounded-xl px-3 py-2.5">
@@ -238,10 +258,9 @@ export default function OperatorPage() {
                         <span>•</span>
                         <span>مطابقة: {matchLabel(v.qualification)}</span>
                       </div>
-                      {/* Score bar */}
                       <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-saudi-green rounded-full transition-all duration-1000"
+                          className="h-full bg-saudi-green rounded-full"
                           style={{ width: `${v.score}%` }}
                         />
                       </div>
@@ -251,7 +270,7 @@ export default function OperatorPage() {
 
                 <button
                   onClick={handleSendAlert}
-                  className="w-full bg-saudi-green hover:bg-saudi-green-dark text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg active:scale-95 mt-1"
+                  className="w-full bg-saudi-green hover:bg-saudi-green-dark text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md hover:shadow-lg active:scale-95"
                 >
                   إرسال التنبيه للثلاثة
                 </button>
@@ -259,7 +278,7 @@ export default function OperatorPage() {
             </div>
           )}
 
-          {/* Alerted state info */}
+          {/* Alerted state */}
           {state === "alerted" && (
             <div className="absolute top-4 left-4 w-72 bg-white rounded-2xl shadow-xl border border-orange-200 animate-slide-in-right z-[1000]">
               <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl">
@@ -267,7 +286,7 @@ export default function OperatorPage() {
                 <p className="text-xs text-orange-100">انتظار رد المتطوعين...</p>
               </div>
               <div className="px-5 py-4 space-y-2">
-                {TOP_3.map((v, i) => (
+                {TOP_3.map((v) => (
                   <div key={v.id} className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
                     <span className="text-sm text-gray-700">{v.nameAr}</span>
@@ -294,10 +313,26 @@ export default function OperatorPage() {
                   </div>
                 </div>
                 <div className="bg-blue-50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-gray-500">المسافة للمريض</p>
-                  <p className="text-2xl font-black text-blue-600">٨٥م</p>
-                  <p className="text-xs text-gray-400">وقت التدخل المتوقع: &lt;٩٠ ثانية</p>
+                  <p className="text-xs text-gray-500">وقت التدخل المتوقع</p>
+                  <p className="text-2xl font-black text-blue-600">&lt;٩٠ ثانية</p>
+                  <p className="text-xs text-gray-400 mt-1">مقارنةً بـ ١١ دقيقة للإسعاف</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Resolved */}
+          {state === "resolved" && (
+            <div className="absolute top-4 left-4 w-72 bg-white rounded-2xl shadow-xl border border-green-200 animate-slide-in-right z-[1000]">
+              <div className="bg-saudi-green text-white px-5 py-3 rounded-t-2xl">
+                <p className="font-bold">🤲 تقبّل الله منك</p>
+                <p className="text-xs text-green-100">تمت معالجة الحالة بنجاح</p>
+              </div>
+              <div className="px-5 py-4 text-center">
+                <p className="text-4xl mb-2">✅</p>
+                <p className="font-bold text-gray-800">وقت الاستجابة</p>
+                <p className="text-2xl font-black text-saudi-green">{formatTime(elapsedSeconds)}</p>
+                <p className="text-xs text-gray-400 mt-1">مقارنةً بـ ١١ دقيقة للإسعاف</p>
               </div>
             </div>
           )}
