@@ -14,6 +14,7 @@ type DemoState = "idle" | "emergency" | "alerted" | "expanded" | "accepted" | "r
 
 export default function OperatorPage() {
   const [state, setState]             = useState<DemoState>("idle");
+  const [isCritical, setIsCritical]   = useState(false);
   const [elapsedSeconds, setElapsed]  = useState(0);
   const [waitSeconds, setWait]        = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -51,9 +52,14 @@ export default function OperatorPage() {
 
         if (ev.type === "VOLUNTEER_ARRIVED") setState((s) => s === "accepted" ? "resolved" : s);
 
+        if (ev.type === "CASE_CRITICAL") {
+          setIsCritical(true);
+        }
+
         if (ev.type === "CASE_RESOLVED") {
           setState("idle");
           setElapsed(0);
+          setIsCritical(false);
           setDeclinedIds(new Set());
           stopTimer();
           stopWaitTimer();
@@ -409,6 +415,23 @@ export default function OperatorPage() {
                   <p className="text-xs text-gray-500">وقت التدخل المتوقع</p>
                   <p className="text-2xl font-black text-blue-600">&lt;٩٠ ثانية</p>
                   <p className="text-xs text-gray-400 mt-1">مقارنةً بـ ١١ دقيقة للإسعاف</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Critical alert banner */}
+          {isCritical && state !== "resolved" && (
+            <div className="absolute bottom-4 left-4 right-4 bg-red-600 text-white rounded-2xl shadow-2xl p-4 z-[1000] animate-fade-in">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl animate-pulse">🆘</span>
+                <div className="flex-1">
+                  <p className="font-black text-base">حالة حرجة — المتطوع يطلب دعماً فورياً</p>
+                  <p className="text-red-200 text-xs mt-0.5">المتطوع على الموقع • الإسعاف في الطريق</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs bg-white/20 rounded-lg px-2 py-1 text-center font-bold">ETA إسعاف</span>
+                  <span className="text-lg font-black text-center">٨ دق</span>
                 </div>
               </div>
             </div>

@@ -90,13 +90,13 @@ export const volunteers: Volunteer[] = raw.map((v) => ({
 }));
 
 export const ROUND1_IDS = volunteers
-  .filter((v) => v.distance <= 200)
+  .filter((v) => v.distance <= 300)
   .sort((a, b) => b.score - a.score)
-  .slice(0, 3)
+  .slice(0, 5)
   .map((v) => v.id);
 
 export const ROUND2_IDS = volunteers
-  .filter((v) => v.distance > 200 && v.distance <= 500)
+  .filter((v) => v.distance > 300 && v.distance <= 600)
   .sort((a, b) => b.score - a.score)
   .map((v) => v.id);
 
