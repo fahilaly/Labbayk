@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet CSS */
+@import "leaflet/dist/leaflet.css";
+
+* {
+  font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif;
+}
+
+body {
+  direction: rtl;
+}
+
+/* Volunteer dot pulse animation */
+@keyframes volunteer-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+@keyframes emergency-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+
+.volunteer-dot-pulse {
+  animation: volunteer-pulse 2s ease-out infinite;
+}
+
+.emergency-dot-pulse {
+  animation: emergency-pulse 0.7s ease-out infinite;
+}
+
+/* Leaflet dot override */
+.leaflet-container {
+  background: #f0f4f0;
+  font-family: "Tajawal", sans-serif;
+}
+
+/* Score bar animation */
+@keyframes score-fill {
+  from { width: 0%; }
+  to { width: var(--score-width); }
+}
+
+.score-bar-fill {
+  animation: score-fill 0.8s ease-out forwards;
+}
+
+/* Countdown ring */
+@keyframes countdown {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 339; }
+}
+
+.countdown-ring {
+  animation: countdown 60s linear forwards;
+}
